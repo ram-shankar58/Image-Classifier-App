@@ -23,7 +23,7 @@ import 'package:image/image.dart';
 import 'package:tflite_flutter/tflite_flutter.dart';
 
 class ImageClassificationHelper {
-  static const modelPath = 'assets/model.tflite';
+  static const modelPath = 'assets/vgg16_model.tflite';
   static const labelsPath = 'assets/labels.txt';
 
   late final Interpreter interpreter;
@@ -65,7 +65,7 @@ class ImageClassificationHelper {
 
   // Load labels from assets
   Future<void> _loadLabels() async {
-    final labelTxt = await rootBundle.loadString(labelsPath);
+    final labelTxt = await rootBundle.loadString(labelsPath); //string loading for labels.
     labels = labelTxt.split('\n');
   }
 
@@ -75,7 +75,7 @@ class ImageClassificationHelper {
   }
 
   // inference still image
-  Future<Map<String, double>> inferenceImage(Image image) async {
+  Future<Map<String, double>> inferenceImage(Image image) async { 
     // resize original image to match model shape.
     Image imageInput = copyResize(
       image,
@@ -89,7 +89,7 @@ class ImageClassificationHelper {
           (y) => List.generate(
         imageInput.width,
             (x) {
-          final pixel = imageInput.getPixel(x, y);
+          final pixel = imageInput.getPixel(x, y);   //see if you need to do normalisation of image here 
           return [
             (pixel.r / 127.5) - 1,
             (pixel.g / 127.5) - 1,
@@ -100,13 +100,13 @@ class ImageClassificationHelper {
 
     // Set tensors shape
     final input = [imageMatrix];
-    final output = List.filled(1*1000, 0).reshape([1,1000]);
+    final output = List.filled(1*2, 0).reshape([1,2]);
     // Run inference;
     interpreter.run(input, output);
     // Get first output tensor
     final result = output.first;
     // Set classification map {label: points}
-    var classification = <String, double>{};
+    var classification = <String, double>{};     //change classification to stirg alone!
     for (var i = 0; i < result.length; i++) {
       if (result[i] != 0) {
         // Set label: points

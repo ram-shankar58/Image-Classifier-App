@@ -50,6 +50,7 @@ class _MyHomePageState extends State<MyHomePage> {
     imageClassificationHelper!.initHelper();
     super.initState();
   }
+  //TRy to add boxing label around the output layout 
 
   // Clean old results when press some take picture button
   void cleanResult() {
