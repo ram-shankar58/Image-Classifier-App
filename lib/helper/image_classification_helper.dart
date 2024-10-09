@@ -25,7 +25,6 @@ import 'package:tflite_flutter/tflite_flutter.dart';
 class ImageClassificationHelper {
   static const modelPath = 'assets/vgg16_model.tflite';
   static const labelsPath = 'assets/labels.txt';
-
   late final Interpreter interpreter;
   late final List<String> labels;
   late Tensor inputTensor;
@@ -91,9 +90,9 @@ class ImageClassificationHelper {
             (x) {
           final pixel = imageInput.getPixel(x, y);   //see if you need to do normalisation of image here 
           return [
-            (pixel.r / 127.5) - 1,
-            (pixel.g / 127.5) - 1,
-            (pixel.b / 127.5) - 1,];
+            (pixel.r),
+            (pixel.g),
+            (pixel.b ),];
         },
       ),
     );
