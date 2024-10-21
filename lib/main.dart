@@ -2,8 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:image/image.dart' as img;
-import 'package:image_picker/image_picker.dart';
-import 'helper/image_classification_helper.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 void main() {
   runApp(const MyApp());
@@ -15,12 +14,12 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: '',
+      title: 'Image Classification',
       theme: ThemeData(
         useMaterial3: true,
         colorScheme: ColorScheme.fromSeed(seedColor: const Color.fromARGB(255, 22, 184, 233)),
       ),
-      home: const MyHomePage(title: ''),
+      home: const MyHomePage(title: 'Image Classification App'),
     );
   }
 }
@@ -35,53 +34,51 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  ImageClassificationHelper? imageClassificationHelper;
-  final imagePicker = ImagePicker();
-  String? imagePath;
-  XFile? imageFile;
   img.Image? image;
-  Map<String, double>? classification;
   Iterable<MapEntry<String, double>>? results;
+  String? imagePath;
 
   @override
   void initState() {
-    imageClassificationHelper = ImageClassificationHelper();
-    imageClassificationHelper!.initHelper();
     super.initState();
   }
 
   void cleanResult() {
     imagePath = null;
     image = null;
-    classification = null;
     results = null;
     setState(() {});
   }
 
-  pickImage() async {
-    cleanResult();
-    final result = await imagePicker.pickImage(
-      source: ImageSource.gallery,
-    );
+  /// Function to launch the HikMicro app
+  Future<void> launchHikMicroApp() async {
+    const packageName = 'com.hikvision.thermalGoogle'; // Replace with the actual HikMicro package name
 
-    imagePath = result?.path;
-    setState(() {});
-    processImage();
-  }
+    // Check if the HikMicro app can be launched
+    final bool canLaunchApp = await canLaunchUrl(Uri.parse("market://launch?id=com.hikvision.thermalGoogle"));
 
-  Future<void> processImage() async {
-    if (imagePath != null) {
-      final imageData = File(imagePath!).readAsBytesSync();
-      image = img.decodeImage(imageData);
-      setState(() {});
-      classification = await imageClassificationHelper?.inferenceImage(image!);
-      results = (classification!.entries.toList()
-            ..sort(
-              (a, b) => a.value.compareTo(b.value),
-            ))
-          .reversed
-          .take(3);
-      setState(() {});
+    if (canLaunchApp) {
+      // Launch the HikMicro app
+      await launchUrl(Uri.parse("market://launch?id=com.hikvision.thermalGoogle"));
+    } else {
+      // If the app is not installed or can't be launched, show an error
+      showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            title: const Text('Error'),
+            content: const Text('HikMicro app is not installed or cannot be opened.'),
+            actions: <Widget>[
+              TextButton(
+                child: const Text('OK'),
+                onPressed: () {
+                  Navigator.of(context).pop();
+                },
+              ),
+            ],
+          );
+        },
+      );
     }
   }
 
@@ -111,7 +108,7 @@ class _MyHomePageState extends State<MyHomePage> {
               ),
             ),
 
-            // Top Image Display Section
+            // Top Image Display Section (if image is available)
             if (image != null)
               Padding(
                 padding: const EdgeInsets.all(16.0),
@@ -146,56 +143,6 @@ class _MyHomePageState extends State<MyHomePage> {
                 ),
               ),
 
-            // Classification Result Box
-            if (results != null)
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Card(
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  color: Colors.green[50],
-                  elevation: 3,
-                  child: Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Column(
-                      children: results!.map((result) {
-                        return Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 4),
-                          child: Container(
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: Colors.green[100],
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(color: Colors.green[700]!),
-                            ),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text(
-                                  result.key,
-                                  style: const TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                                Text(
-                                  '${(result.value * 100).toStringAsFixed(2)}%',
-                                  style: TextStyle(
-                                    color: Colors.green[900],
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        );
-                      }).toList(),
-                    ),
-                  ),
-                ),
-              ),
-
             // Padding for the action button at the bottom
             const SizedBox(height: 50), // Adds space before the button
 
@@ -222,9 +169,9 @@ class _MyHomePageState extends State<MyHomePage> {
                     backgroundColor: Colors.transparent,
                     shadowColor: Colors.transparent,
                   ),
-                  onPressed: pickImage,
+                  onPressed: launchHikMicroApp, // Open the HikMicro app
                   child: const Text(
-                    'Pick Image from Gallery',
+                    'Open HikMicro App',
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
