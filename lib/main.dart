@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart'; // for picking images
 import 'package:image/image.dart' as img;
 import 'package:url_launcher/url_launcher.dart';
 
@@ -33,21 +34,30 @@ class MyHomePage extends StatefulWidget {
   State<MyHomePage> createState() => _MyHomePageState();
 }
 
-class _MyHomePageState extends State<MyHomePage> {
+class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
   img.Image? image;
   Iterable<MapEntry<String, double>>? results;
   String? imagePath;
+  bool launchedHikMicro = false;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
   }
 
-  void cleanResult() {
-    imagePath = null;
-    image = null;
-    results = null;
-    setState(() {});
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed && launchedHikMicro) {
+      // When the app comes back to focus after launching HikMicro
+      _pickLatestImageFromGallery();
+    }
   }
 
   /// Function to launch the HikMicro app
@@ -58,27 +68,55 @@ class _MyHomePageState extends State<MyHomePage> {
     final bool canLaunchApp = await canLaunchUrl(Uri.parse("market://launch?id=com.hikvision.thermalGoogle"));
 
     if (canLaunchApp) {
-      // Launch the HikMicro app
+      setState(() {
+        launchedHikMicro = true;
+      });
       await launchUrl(Uri.parse("market://launch?id=com.hikvision.thermalGoogle"));
     } else {
-      // If the app is not installed or can't be launched, show an error
-      showDialog(
-        context: context,
-        builder: (BuildContext context) {
-          return AlertDialog(
-            title: const Text('Error'),
-            content: const Text('HikMicro app is not installed or cannot be opened.'),
-            actions: <Widget>[
-              TextButton(
-                child: const Text('OK'),
-                onPressed: () {
-                  Navigator.of(context).pop();
-                },
-              ),
-            ],
-          );
-        },
+      _showErrorDialog('HikMicro app is not installed or cannot be opened.');
+    }
+  }
+
+  void _showErrorDialog(String message) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Error'),
+          content: Text(message),
+          actions: <Widget>[
+            TextButton(
+              child: const Text('OK'),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  /// Function to select the latest image from the gallery
+  Future<void> _pickLatestImageFromGallery() async {
+    final ImagePicker picker = ImagePicker();
+    final XFile? latestImage = await picker.pickImage(source: ImageSource.gallery);
+
+    if (latestImage != null) {
+      setState(() {
+        imagePath = latestImage.path;
+        image = img.decodeImage(File(imagePath!).readAsBytesSync());
+      });
+
+      // Navigate to the new page to run the model
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => ClassificationPage(imagePath: imagePath!),
+        ),
       );
+    } else {
+      _showErrorDialog('No image was selected.');
     }
   }
 
@@ -143,7 +181,6 @@ class _MyHomePageState extends State<MyHomePage> {
                 ),
               ),
 
-            // Padding for the action button at the bottom
             const SizedBox(height: 50), // Adds space before the button
 
             Padding(
@@ -183,6 +220,34 @@ class _MyHomePageState extends State<MyHomePage> {
             ),
 
             const SizedBox(height: 40), // Adds more space after the button
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class ClassificationPage extends StatelessWidget {
+  final String imagePath;
+
+  const ClassificationPage({super.key, required this.imagePath});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Image Classification Result'),
+      ),
+      body: Center(
+        child: Column(
+          children: [
+            Image.file(File(imagePath)),
+            const SizedBox(height: 20),
+            Text(
+              'Model Running on the Selected Image',
+              style: Theme.of(context).textTheme.headlineMedium,
+            ),
+            // Add your logic to run the classification model on the image
           ],
         ),
       ),
