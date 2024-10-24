@@ -3,8 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:image/image.dart' as img;
 import 'package:image_picker/image_picker.dart';
 import 'helper/image_classification_helper.dart';
-import 'package:permission_handler/permission_handler.dart'; // For permissions
-import 'package:url_launcher/url_launcher.dart'; // For launching apps
+import 'package:permission_handler/permission_handler.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 void main() {
   runApp(const MyApp());
@@ -76,15 +76,15 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
     setState(() {});
   }
 
-  pickImage() async {
+  pickImageFromGallery() async {
     cleanResult();
-    final result = await imagePicker.pickImage(
-      source: ImageSource.gallery,
-    );
+    final result = await imagePicker.pickImage(source: ImageSource.gallery);
 
-    imagePath = result?.path;
-    setState(() {});
-    processImage();
+    if (result != null) {
+      imagePath = result.path;
+      setState(() {});
+      processImage();
+    }
   }
 
   Future<void> processImage() async {
@@ -103,7 +103,6 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
     }
   }
 
-  // Check for storage permissions
   Future<void> _checkStoragePermission() async {
     if (await Permission.manageExternalStorage.isDenied) {
       PermissionStatus status = await Permission.manageExternalStorage.request();
@@ -124,7 +123,6 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
     }
   }
 
-  // Load the latest image from the 'HIKMICRO Viewer' folder and classify it
   Future<void> _loadLatestImage() async {
     final directory = Directory('/storage/emulated/0/Pictures/HIKMICRO Viewer');
     if (directory.existsSync()) {
@@ -135,22 +133,17 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
         setState(() {
           _latestImageFile = files.first as File;
           imagePath = _latestImageFile!.path;
+          image = img.decodeImage(File(imagePath!).readAsBytesSync());
         });
-        
-        // Process and classify the latest image
-        await processImage();
-
+        processImage();
       } else {
-        print("No image files found.");
         _showErrorDialog('No image files found in the HIKMICRO Viewer folder.');
       }
     } else {
-      print("Directory does not exist.");
       _showErrorDialog('HIKMICRO Viewer directory does not exist.');
     }
   }
 
-  /// Function to launch the HikMicro app
   Future<void> launchHikMicroApp() async {
     const packageName = 'com.hikvision.thermalGoogle'; // Replace with actual HikMicro package name
 
@@ -212,7 +205,7 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
               ),
             ),
 
-            // Top Image Display Section
+            // Image Display Section
             if (image != null)
               Padding(
                 padding: const EdgeInsets.all(16.0),
@@ -247,40 +240,52 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
                 ),
               ),
 
-            // HikMicro Button
+            // Buttons: Load from Gallery and Load Latest Image from HikMicro
             Padding(
               padding: const EdgeInsets.all(24.0),
-              child: Container(
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(30),
-                  gradient: const LinearGradient(
-                    colors: [
-                      Color(0xFF00C853),
-                      Color(0xFF64DD17),
-                    ],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                ),
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 32),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(30),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  // Load Image from Gallery
+                  ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 32),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(30),
+                      ),
+                      backgroundColor: Colors.green,
                     ),
-                    backgroundColor: Colors.transparent,
-                    shadowColor: Colors.transparent,
-                  ),
-                  onPressed: launchHikMicroApp, // Open the HikMicro app
-                  child: const Text(
-                    'Open HikMicro App',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
+                    onPressed: pickImageFromGallery,
+                    child: const Text(
+                      'Select from Gallery',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
                     ),
                   ),
-                ),
+
+                  // Load Latest Image from HikMicro
+                  ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 32),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(30),
+                      ),
+                      backgroundColor: Colors.blue,
+                    ),
+                    onPressed: launchHikMicroApp,
+                    child: const Text(
+                      'Load from HikMicro',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
 
