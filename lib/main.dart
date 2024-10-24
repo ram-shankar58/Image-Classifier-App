@@ -180,119 +180,237 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
   }
 
   @override
-  Widget build(BuildContext context) {
-    final topResult = results?.isNotEmpty == true ? results!.first.key : 'No result';
+Widget build(BuildContext context) {
+  final topResult = results?.isNotEmpty == true ? results!.first.key : 'No result';
 
-    return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Theme.of(context).colorScheme.primary,
-        title: Text(widget.title),
-        centerTitle: true,
-      ),
-      body: SingleChildScrollView(
-        child: Column(
-          children: <Widget>[
-            // Welcome Text
+  return Scaffold(
+    appBar: AppBar(
+      backgroundColor: Theme.of(context).colorScheme.primary,
+      title: Text(widget.title),
+      centerTitle: true,
+      elevation: 5,
+      shadowColor: Colors.grey.withOpacity(0.4),
+    ),
+    body: SingleChildScrollView(
+      child: Column(
+        children: <Widget>[
+          // Welcome Text with enhanced styling
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 32.0),
+            child: Text(
+              'Welcome to the Image Classification App!',
+              style: Theme.of(context).textTheme.headlineMedium!.copyWith(
+                    color: Colors.teal[800],
+                    fontWeight: FontWeight.bold,
+                    shadows: [
+                      Shadow(
+                        offset: Offset(2.0, 2.0),
+                        blurRadius: 3.0,
+                        color: Colors.grey.withOpacity(0.5),
+                      ),
+                    ],
+                  ),
+              textAlign: TextAlign.center,
+            ),
+          ),
+
+          // Image Display Section with card and elevation
+          if (image != null)
             Padding(
-              padding: const EdgeInsets.symmetric(vertical: 32.0),
-              child: Text(
-                'Welcome to the Image Classification App!',
-                style: Theme.of(context).textTheme.headlineMedium!.copyWith(
-                      color: Colors.green[800],
-                      fontWeight: FontWeight.bold,
+              padding: const EdgeInsets.all(16.0),
+              child: Card(
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                elevation: 8,
+                shadowColor: Colors.blue.withOpacity(0.3),
+                child: Column(
+                  children: [
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(16),
+                      child: Image.file(
+                        File(imagePath!),
+                        height: 300,
+                        width: double.infinity,
+                        fit: BoxFit.cover,
+                      ),
                     ),
-                textAlign: TextAlign.center,
+                    const SizedBox(height: 16),
+                    Text(
+                      'Top Classification: $topResult',
+                      style: Theme.of(context).textTheme.headlineMedium!.copyWith(
+                            color: Colors.teal[700],
+                            fontWeight: FontWeight.bold,
+                          ),
+                    ),
+                    const SizedBox(height: 16),
+                  ],
+                ),
               ),
             ),
 
-            // Image Display Section
-            if (image != null)
-              Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Card(
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  elevation: 6,
-                  shadowColor: Colors.grey.withOpacity(0.3),
+          // Classification Results Section
+          if (results != null)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Card(
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                color: Colors.teal[50],
+                elevation: 4,
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
                   child: Column(
-                    children: [
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(16),
-                        child: Image.file(
-                          File(imagePath!),
-                          height: 300,
-                          width: double.infinity,
-                          fit: BoxFit.cover,
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        'Top Classification: $topResult',
-                        style: Theme.of(context).textTheme.headlineMedium!.copyWith(
-                              color: Colors.green[700],
-                              fontWeight: FontWeight.bold,
+                    children: results!.map((result) {
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        child: Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              colors: [
+                                Color(0xFF00C853),
+                                Color(0xFF64DD17),
+                              ],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
                             ),
-                      ),
-                      const SizedBox(height: 16),
-                    ],
+                            borderRadius: BorderRadius.circular(10),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.grey.withOpacity(0.4),
+                                spreadRadius: 2,
+                                blurRadius: 4,
+                                offset: Offset(0, 3),
+                              ),
+                            ],
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                result.key,
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w500,
+                                  color: Colors.white,
+                                ),
+                              ),
+                              Text(
+                                '${(result.value * 100).toStringAsFixed(2)}%',
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    }).toList(),
                   ),
                 ),
               ),
-
-            // Buttons: Load from Gallery and Load Latest Image from HikMicro
-            Padding(
-              padding: const EdgeInsets.all(24.0),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  // Load Image from Gallery
-                  ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 32),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(30),
-                      ),
-                      backgroundColor: Colors.green,
-                    ),
-                    onPressed: pickImageFromGallery,
-                    child: const Text(
-                      'Select from Gallery',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ),
-
-                  // Load Latest Image from HikMicro
-                  ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 32),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(30),
-                      ),
-                      backgroundColor: Colors.blue,
-                    ),
-                    onPressed: launchHikMicroApp,
-                    child: const Text(
-                      'Load from HikMicro',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
             ),
 
-            const SizedBox(height: 50),
+          // Padding for buttons with gradient and rounded corners
+          Padding(
+  padding: const EdgeInsets.all(24.0),
+  child: Column(
+    mainAxisAlignment: MainAxisAlignment.center,
+    children: [
+      // Select Image from Gallery Button
+      Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(30),
+          gradient: const LinearGradient(
+            colors: [Color(0xFF00BFA5), Color(0xFF1DE9B6)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.grey.withOpacity(0.4),
+              spreadRadius: 2,
+              blurRadius: 4,
+              offset: Offset(0, 3),
+            ),
           ],
         ),
+        child: ElevatedButton(
+          style: ElevatedButton.styleFrom(
+            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 32),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(30),
+            ),
+            backgroundColor: Colors.transparent,
+            shadowColor: Colors.transparent,
+          ),
+          onPressed: pickImageFromGallery,
+          child: const Text(
+            'Select from Gallery',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
+          ),
+        ),
       ),
-    );
-  }
+
+      const SizedBox(height: 16), // Adds space between the buttons
+
+      // Load Latest Image from HikMicro Button
+      Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(30),
+          gradient: const LinearGradient(
+            colors: [Color(0xFF42A5F5), Color(0xFF2196F3)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.grey.withOpacity(0.4),
+              spreadRadius: 2,
+              blurRadius: 4,
+              offset: Offset(0, 3),
+            ),
+          ],
+        ),
+        child: ElevatedButton(
+          style: ElevatedButton.styleFrom(
+            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 32),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(30),
+            ),
+            backgroundColor: Colors.transparent,
+            shadowColor: Colors.transparent,
+          ),
+          onPressed: launchHikMicroApp,
+          child: const Text(
+            'Load from HikMicro',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
+          ),
+        ),
+      ),
+    ],
+  ),
+),
+
+          const SizedBox(height: 40), // Adds space after buttons
+        ],
+      ),
+    ),
+  );
 }
+
+
+}
+
