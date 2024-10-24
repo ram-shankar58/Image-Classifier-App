@@ -1,10 +1,10 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart'; // for picking images
-import 'package:permission_handler/permission_handler.dart';
-import 'package:url_launcher/url_launcher.dart';
-import 'package:flutter/services.dart';
 import 'package:image/image.dart' as img;
+import 'package:image_picker/image_picker.dart';
+import 'helper/image_classification_helper.dart';
+import 'package:permission_handler/permission_handler.dart'; // For permissions
+import 'package:url_launcher/url_launcher.dart'; // For launching apps
 
 void main() {
   runApp(const MyApp());
@@ -16,12 +16,12 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Image Classification',
+      title: '',
       theme: ThemeData(
         useMaterial3: true,
         colorScheme: ColorScheme.fromSeed(seedColor: const Color.fromARGB(255, 22, 184, 233)),
       ),
-      home: const MyHomePage(title: 'Image Classification App'),
+      home: const MyHomePage(title: ''),
     );
   }
 }
@@ -36,17 +36,23 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
-  img.Image? image;
-  Iterable<MapEntry<String, double>>? results;
+  ImageClassificationHelper? imageClassificationHelper;
+  final imagePicker = ImagePicker();
   String? imagePath;
+  XFile? imageFile;
+  img.Image? image;
+  Map<String, double>? classification;
+  Iterable<MapEntry<String, double>>? results;
   File? _latestImageFile;
   bool launchedHikMicro = false;
 
   @override
   void initState() {
-    super.initState();
+    imageClassificationHelper = ImageClassificationHelper();
+    imageClassificationHelper!.initHelper();
     WidgetsBinding.instance.addObserver(this);
-    _checkStoragePermission(); // Check permissions when initializing
+    _checkStoragePermission();
+    super.initState();
   }
 
   @override
@@ -58,8 +64,42 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed && launchedHikMicro) {
-      // When returning from the HikMicro app, load the latest image from the directory
       _loadLatestImage();
+    }
+  }
+
+  void cleanResult() {
+    imagePath = null;
+    image = null;
+    classification = null;
+    results = null;
+    setState(() {});
+  }
+
+  pickImage() async {
+    cleanResult();
+    final result = await imagePicker.pickImage(
+      source: ImageSource.gallery,
+    );
+
+    imagePath = result?.path;
+    setState(() {});
+    processImage();
+  }
+
+  Future<void> processImage() async {
+    if (imagePath != null) {
+      final imageData = File(imagePath!).readAsBytesSync();
+      image = img.decodeImage(imageData);
+      setState(() {});
+      classification = await imageClassificationHelper?.inferenceImage(image!);
+      results = (classification!.entries.toList()
+            ..sort(
+              (a, b) => a.value.compareTo(b.value),
+            ))
+          .reversed
+          .take(3);
+      setState(() {});
     }
   }
 
@@ -84,7 +124,7 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
     }
   }
 
-  // Load the latest image from the 'HIKMICRO Viewer' folder
+  // Load the latest image from the 'HIKMICRO Viewer' folder and classify it
   Future<void> _loadLatestImage() async {
     final directory = Directory('/storage/emulated/0/Pictures/HIKMICRO Viewer');
     if (directory.existsSync()) {
@@ -95,16 +135,11 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
         setState(() {
           _latestImageFile = files.first as File;
           imagePath = _latestImageFile!.path;
-          image = img.decodeImage(File(imagePath!).readAsBytesSync());
         });
+        
+        // Process and classify the latest image
+        await processImage();
 
-        // Navigate to the classification page with the loaded image
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => ClassificationPage(imagePath: imagePath!),
-          ),
-        );
       } else {
         print("No image files found.");
         _showErrorDialog('No image files found in the HIKMICRO Viewer folder.');
@@ -117,15 +152,15 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
 
   /// Function to launch the HikMicro app
   Future<void> launchHikMicroApp() async {
-    const packageName = 'com.hikvision.thermalGoogle'; // Replace with the actual HikMicro package name
+    const packageName = 'com.hikvision.thermalGoogle'; // Replace with actual HikMicro package name
 
-    final bool canLaunchApp = await canLaunchUrl(Uri.parse("market://launch?id=com.hikvision.thermalGoogle"));
+    final bool canLaunchApp = await canLaunchUrl(Uri.parse("market://launch?id=$packageName"));
 
     if (canLaunchApp) {
       setState(() {
         launchedHikMicro = true;
       });
-      await launchUrl(Uri.parse("market://launch?id=com.hikvision.thermalGoogle"));
+      await launchUrl(Uri.parse("market://launch?id=$packageName"));
     } else {
       _showErrorDialog('HikMicro app is not installed or cannot be opened.');
     }
@@ -164,6 +199,7 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
       body: SingleChildScrollView(
         child: Column(
           children: <Widget>[
+            // Welcome Text
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 32.0),
               child: Text(
@@ -176,7 +212,8 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
               ),
             ),
 
-            if (_latestImageFile != null)
+            // Top Image Display Section
+            if (image != null)
               Padding(
                 padding: const EdgeInsets.all(16.0),
                 child: Card(
@@ -190,7 +227,7 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
                       ClipRRect(
                         borderRadius: BorderRadius.circular(16),
                         child: Image.file(
-                          File(_latestImageFile!.path),
+                          File(imagePath!),
                           height: 300,
                           width: double.infinity,
                           fit: BoxFit.cover,
@@ -210,8 +247,7 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
                 ),
               ),
 
-            const SizedBox(height: 50),
-
+            // HikMicro Button
             Padding(
               padding: const EdgeInsets.all(24.0),
               child: Container(
@@ -248,35 +284,7 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
               ),
             ),
 
-            const SizedBox(height: 40),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class ClassificationPage extends StatelessWidget {
-  final String imagePath;
-
-  const ClassificationPage({super.key, required this.imagePath});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Image Classification Result'),
-      ),
-      body: Center(
-        child: Column(
-          children: [
-            Image.file(File(imagePath)),
-            const SizedBox(height: 20),
-            Text(
-              'Model Running on the Selected Image',
-              style: Theme.of(context).textTheme.headlineMedium,
-            ),
-            // Add your logic to run the classification model on the image
+            const SizedBox(height: 50),
           ],
         ),
       ),
