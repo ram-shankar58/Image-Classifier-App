@@ -5,6 +5,8 @@ import 'package:image_picker/image_picker.dart';
 import 'helper/image_classification_helper.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'helper/sensor.dart';
+
 
 void main() {
   runApp(const MyApp());
